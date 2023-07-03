@@ -29,9 +29,9 @@ async fn handle_connection(tx:mpsc::Sender<bool>,mut socket: TcpStream,port:i32)
     }
     let serialiaze: &str = from_utf8(&data[..n]).unwrap();
     let deserialized: Request = serde_json::from_str(serialiaze).expect("Not able to parse the data");
-    write_stream.write_all(b"200").await?;
     let address = format!("{}:{}","0.0.0.0",port);
     let sock = UdpSocket::bind(address).await?;
+    write_stream.write_all(b"200").await?;
     println!("Started UDP servers...");
     println!("buffer size set to {:?}",deserialized.buffer_size);
     if !deserialized.reverse {
