@@ -68,7 +68,8 @@ async fn main() -> Result<(),Box<dyn Error>>{
 
     if mode == Mode::Client {
         let remote_address = matches.get_one::<String>("remote address").expect("could not parse the remote addresss");
-        client::client(buffer_size,remote_address.to_string()).await?
+        let reverse: bool = false;
+        client::client(buffer_size,remote_address.to_string(),reverse).await?
     }
     Ok(())
 }
