@@ -1,5 +1,5 @@
 use std::error::Error;
-use clap::{Arg,Command};
+use clap::{Arg,Command,ArgAction};
 mod server;
 mod client;
 
@@ -12,7 +12,7 @@ enum Mode {
 
 #[tokio::main]
 async fn main() -> Result<(),Box<dyn Error>>{
-    let matches = Command::new("UDPCAT")
+    let cmd = Command::new("udpcat")
         .version("0.0.1")
         .author("Dinesh Arunachalam")
         .about("A tool to test the UDP fragmentation using various length")
@@ -36,11 +36,17 @@ async fn main() -> Result<(),Box<dyn Error>>{
              .value_parser(clap::value_parser!(i32))
              .help("run the server in specified port"))
         .arg(Arg::new("remote address")
-             .short('r')
-             .long("remote_address")
-             .help("server address"))
+             .short('h')
+             .long("host_address")
+             .help("server address which you want to connect"))
+        .arg(Arg::new("reverse")
+             .short('R')
+             .long("reverse")
+             .required(false)
+             .help("run in reverse mode (server sends, client receives)")
+             .action(ArgAction::SetTrue))
         .get_matches();
-    let buffer_str = matches.get_one::<String>("buffer_size");
+    let buffer_str = cmd.get_one::<String>("buffer_size");
     let buffer_size = match buffer_str{
         None => 1024,
         Some(s)  => {
@@ -50,7 +56,7 @@ async fn main() -> Result<(),Box<dyn Error>>{
             }
         }
     };
-    let mode = match matches
+    let mode = match cmd
         .get_one::<String>("mode")
         .expect("'MODE' is required and parsing will fail if its missing")
         .as_str()
@@ -60,15 +66,15 @@ async fn main() -> Result<(),Box<dyn Error>>{
             _ => unreachable!(),
         };
     let buffer_size:usize =  buffer_size;
-    let port = matches.get_one::<i32>("port").expect("could not parse the  port");
+    let port = cmd.get_one::<i32>("port").expect("could not parse the  port");
 
     if mode == Mode::Server{
         server::server(buffer_size, *port).await?
     }
-
     if mode == Mode::Client {
-        let remote_address = matches.get_one::<String>("remote address").expect("could not parse the remote addresss");
-        let reverse: bool = false;
+        let remote_address = cmd.get_one::<String>("remote address").expect("could not parse the remote addresss");
+        let reverse:bool = cmd.get_flag("reverse");
+        println!("{:?}",reverse);
         client::client(buffer_size,remote_address.to_string(),reverse).await?
     }
     Ok(())

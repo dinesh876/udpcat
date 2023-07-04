@@ -31,18 +31,37 @@ async fn handle_connection(tx:mpsc::Sender<bool>,mut socket: TcpStream,port:i32)
     let deserialized: Request = serde_json::from_str(serialiaze).expect("Not able to parse the data");
     let address = format!("{}:{}","0.0.0.0",port);
     let sock = UdpSocket::bind(address).await?;
-    write_stream.write_all(b"200").await?;
     println!("Started UDP servers...");
+    write_stream.write_all(b"200").await?;
+    println!("Waiting to receive message from client UDP socket");
+    let (l,peer) = sock.recv_from(&mut data).await?;
+    println!("recevied data from client");
+    println!("Peer {:?}",peer);
+    sock.send_to(b"..h.",peer).await?;
     println!("buffer size set to {:?}",deserialized.buffer_size);
     if !deserialized.reverse {
         let mut buf=  vec![0;deserialized.buffer_size];
-        let (len, addr) = sock.recv_from(&mut buf).await?;
-        println!("{:?} bytes received from {:?}",len,addr);
-        write_stream.write_all(&format!("server received:{} bytes",len).into_bytes()).await?;
+        let size = read_stream.read(&mut data).await?;
+        let msg = String::from_utf8_lossy(&data[..size]);
+        println!("client message {:?}",msg);
+        if msg == "Receive"{
+            write_stream.write_all(b"Ok").await?;
+            let (len, addr) = sock.recv_from(&mut buf).await?;
+            println!("{:?} bytes received from {:?}",len,addr);
+            write_stream.write_all(&format!("server received:{} bytes",len).into_bytes()).await?;
+        }
         tx.send(true).unwrap();
     } else {
-        let len = sock.send(&generate_random_bytes(deserialized.buffer_size)).await?;
-        println!("{:?} bytes sent",len);
+        let size =  read_stream.read(&mut data).await?;
+        println!("n: {:?}, l:{:?}, size: {:?}",n,l,size);
+        let msg  = String::from_utf8_lossy(&mut data[..size]);
+        println!("client message {:?} ",msg);
+        if msg == "Send"{
+            
+            write_stream.write_all(b"Ok").await?;
+            let len = sock.send_to(&generate_random_bytes(deserialized.buffer_size),peer).await?;
+            println!("{:?} bytes sent",len);
+        }
         tx.send(true).unwrap();
     }
     Ok(())
